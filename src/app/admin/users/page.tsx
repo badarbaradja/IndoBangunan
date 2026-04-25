@@ -14,7 +14,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const supabase = createBrowserClient()
+  const [supabase] = useState(() => createBrowserClient())
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)

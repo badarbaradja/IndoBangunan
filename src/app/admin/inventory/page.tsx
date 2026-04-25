@@ -12,7 +12,7 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const supabase = createBrowserClient()
+  const [supabase] = useState(() => createBrowserClient())
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true)

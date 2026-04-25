@@ -14,6 +14,7 @@ export default function ProductModal({ onClose, onSuccess }: ProductModalProps) 
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
+  const [supabase] = useState(() => createBrowserClient())
   
   const [formData, setFormData] = useState({
     sku: '',
@@ -29,8 +30,6 @@ export default function ProductModal({ onClose, onSuccess }: ProductModalProps) 
     stock_minimum: 0,
     allow_negative_stock: false
   })
-
-  const supabase = createBrowserClient()
 
   useEffect(() => {
     async function fetchCategories() {

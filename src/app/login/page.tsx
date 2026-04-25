@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   const router = useRouter()
-  const supabase = createBrowserClient()
+  const [supabase] = useState(() => createBrowserClient())
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

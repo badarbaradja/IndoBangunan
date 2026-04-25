@@ -11,8 +11,8 @@ export function useAuth() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  // Menggunakan helper dari server.ts sesuai aturan CLAUDE.md
-  const supabase = createBrowserClient()
+  // Menggunakan helper dari server.ts sesuai aturan CLAUDE.md dan dibungkus useState agar stabil (singleton per komponen)
+  const [supabase] = useState(() => createBrowserClient())
 
   useEffect(() => {
     let isMounted = true
@@ -90,7 +90,7 @@ export function useAuth() {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [supabase, role])
+  }, [supabase])
 
   // Fungsi untuk proses log out
   const signOut = async () => {

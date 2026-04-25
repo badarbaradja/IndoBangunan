@@ -16,7 +16,7 @@ interface RecentTransaction {
   id: string
   invoice_number: string
   created_at: string
-  total_amount: number
+  total: number
   status: string
   customer_name: string
   kasir: string
@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const [recentTransactions, setRecentTransactions] = useState<RecentTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const supabase = createBrowserClient()
+  const [supabase] = useState(() => createBrowserClient())
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
                     <td style={{ textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: 600 }}>
                       {tx.payment_method}
                     </td>
-                    <td style={{ fontWeight: 700 }}>{formatRupiah(tx.total_amount)}</td>
+                    <td style={{ fontWeight: 700 }}>{formatRupiah(tx.total)}</td>
                     <td>
                       <span className={`${styles.statusPill} ${getStatusBadgeClass(tx.status)}`}>
                         {tx.status.toUpperCase()}

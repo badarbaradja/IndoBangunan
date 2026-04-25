@@ -12,6 +12,7 @@ interface UserModalProps {
 export default function UserModal({ onClose, onSuccess }: UserModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [supabase] = useState(() => createBrowserClient())
   
   const [formData, setFormData] = useState({
     full_name: '',
@@ -20,8 +21,6 @@ export default function UserModal({ onClose, onSuccess }: UserModalProps) {
     role: 'cashier',
     is_active: true
   })
-
-  const supabase = createBrowserClient()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target

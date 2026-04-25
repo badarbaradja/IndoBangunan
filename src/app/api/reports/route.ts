@@ -15,13 +15,13 @@ export async function GET(req: NextRequest) {
     // 2. Fetch data sales hari ini (sukses)
     const { data: salesToday, error: salesError } = await supabase
       .from('sales')
-      .select('total_amount')
+      .select('total')
       .eq('status', 'success')
       .gte('created_at', todayIso)
 
     if (salesError) throw salesError
 
-    const totalPendapatan = salesToday?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
+    const totalPendapatan = salesToday?.reduce((sum, sale) => sum + Number(sale.total), 0) || 0
     const jumlahTransaksi = salesToday?.length || 0
     const rataRataTransaksi = jumlahTransaksi > 0 ? totalPendapatan / jumlahTransaksi : 0
 
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         id, 
         invoice_number, 
         created_at, 
-        total_amount, 
+        total, 
         status, 
         customer_name,
         created_by,
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         id: sale.id,
         invoice_number: sale.invoice_number,
         created_at: sale.created_at,
-        total_amount: sale.total_amount,
+        total: sale.total,
         status: sale.status,
         customer_name: sale.customer_name,
         kasir: kasirName,

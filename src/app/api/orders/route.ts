@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
         invoice_number: invoiceNum,
         customer_name: customer_name || 'Pelanggan Walk-in',
         customer_phone: customer_phone || null,
-        total_amount: totalAmount,
+        total: totalAmount,
+        subtotal: totalAmount, // asumsi tanpa diskon dulu
         status: 'pending'
       })
       .select()
