@@ -1,186 +1,185 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import Image from 'next/image'
-import styles from './pos.module.css'
-import CartPanel from '@/components/pos/CartPanel'
+
+import { useEffect, useState } from 'react'
 import ProductGrid from '@/components/pos/ProductGrid'
+import CartPanel from '@/components/pos/CartPanel'
 import CheckoutModal from '@/components/pos/CheckoutModal'
 import SuccessModal from '@/components/pos/SuccessModal'
-import type { Product, CartItem } from '@/types/pos'
+import { POSProduct, POSCartItem } from '@/types/pos'
+import styles from './pos.module.css'
+import Image from 'next/image'
 
 export default function POSPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [activeCategory, setActiveCategory] = useState('Semua')
-  const [search, setSearch] = useState('')
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showCheckout, setShowCheckout] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const [lastOrder, setLastOrder] = useState<{ invoice: string; total: number } | null>(null)
-  const [cartOpen, setCartOpen] = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
+  const [products, setProducts] = useState<POSProduct[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [cart, setCart] = useState<POSCartItem[]>([])
+  
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [successInvoice, setSuccessInvoice] = useState<string | null>(null)
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (search) params.set('search', search)
-      const res = await fetch(`/api/products?${params}&limit=100`)
-      const data = await res.json()
-      const list: Product[] = data.products ?? []
-      setProducts(list)
-      const cats = ['Semua', ...Array.from(new Set(list.map((p) => p.category?.name ?? 'Lainnya')))]
-      setCategories(cats)
-    } finally {
-      setLoading(false)
-    }
-  }, [search])
-
-  useEffect(() => { fetchProducts() }, [fetchProducts])
-
-  const filteredProducts = products.filter((p) => {
-    if (activeCategory !== 'Semua' && (p.category?.name ?? 'Lainnya') !== activeCategory) return false
-    return true
-  })
-
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.product_id === product.id)
-      if (existing) {
-        return prev.map((c) =>
-          c.product_id === product.id ? { ...c, qty: c.qty + 1 } : c
-        )
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch('/api/products')
+        const json = await res.json()
+        if (res.ok && json.data) {
+          setProducts(json.data)
+        } else {
+          console.error('Failed to fetch products:', json.error)
+        }
+      } catch (err) {
+        console.error('Unexpected error fetching products:', err)
+      } finally {
+        setIsLoading(false)
       }
-      return [...prev, {
-        product_id: product.id,
-        qty: 1,
-        unit_price: product.selling_price,
-        product_name: product.name,
-        unit: product.unit,
-        max_stock: product.stock,
-      }]
+    }
+    fetchProducts()
+  }, [])
+
+  const handleAddToCart = (product: POSProduct) => {
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex(item => item.product.id === product.id)
+      
+      let newQty = 1
+      // Untuk harga grosir logic
+      const calculateSubtotal = (qty: number) => {
+        let price = product.selling_price
+        if (product.wholesale_price && product.min_wholesale_qty && qty >= product.min_wholesale_qty) {
+          price = product.wholesale_price
+        }
+        return price * qty
+      }
+
+      if (existingItemIndex >= 0) {
+        const existingItem = prevCart[existingItemIndex]
+        newQty = existingItem.qty + 1
+        
+        // Cek stok
+        if (!product.allow_negative_stock && newQty > product.stock) {
+          return prevCart // Jangan tambah jika stok habis
+        }
+
+        const newCart = [...prevCart]
+        newCart[existingItemIndex] = {
+          ...existingItem,
+          qty: newQty,
+          subtotal: calculateSubtotal(newQty)
+        }
+        return newCart
+      }
+
+      // Cek stok awal
+      if (!product.allow_negative_stock && product.stock < 1) {
+        return prevCart
+      }
+
+      return [
+        ...prevCart,
+        {
+          product,
+          qty: 1,
+          subtotal: calculateSubtotal(1)
+        }
+      ]
     })
   }
 
-  const updateQty = (product_id: string, qty: number) => {
-    if (qty <= 0) {
-      setCart((prev) => prev.filter((c) => c.product_id !== product_id))
-    } else {
-      setCart((prev) => prev.map((c) => c.product_id === product_id ? { ...c, qty } : c))
-    }
+  const handleUpdateQty = (productId: string, delta: number) => {
+    setCart((prevCart) => {
+      const itemIndex = prevCart.findIndex(item => item.product.id === productId)
+      if (itemIndex < 0) return prevCart
+
+      const item = prevCart[itemIndex]
+      const newQty = item.qty + delta
+
+      if (newQty <= 0) {
+        // Hapus jika qty 0
+        return prevCart.filter(i => i.product.id !== productId)
+      }
+
+      // Cek stok
+      if (delta > 0 && !item.product.allow_negative_stock && newQty > item.product.stock) {
+        return prevCart // Reject tambah jika melebihi stok
+      }
+
+      const calculateSubtotal = (qty: number) => {
+        let price = item.product.selling_price
+        if (item.product.wholesale_price && item.product.min_wholesale_qty && qty >= item.product.min_wholesale_qty) {
+          price = item.product.wholesale_price
+        }
+        return price * qty
+      }
+
+      const newCart = [...prevCart]
+      newCart[itemIndex] = {
+        ...item,
+        qty: newQty,
+        subtotal: calculateSubtotal(newQty)
+      }
+      return newCart
+    })
   }
 
-  const removeItem = (product_id: string) => {
-    setCart((prev) => prev.filter((c) => c.product_id !== product_id))
+  const handleRemoveFromCart = (productId: string) => {
+    setCart((prevCart) => prevCart.filter(item => item.product.id !== productId))
   }
 
-  const clearCart = () => setCart([])
-
-  const cartTotal = cart.reduce((sum, c) => sum + c.unit_price * c.qty, 0)
-  const cartCount = cart.reduce((sum, c) => sum + c.qty, 0)
-
-  const handleOrderSuccess = (invoice: string, total: number) => {
-    setLastOrder({ invoice, total })
-    setShowCheckout(false)
-    setShowSuccess(true)
-    setCart([])
+  const handleCheckoutSuccess = (invoiceNumber: string) => {
+    setCart([]) // Kosongkan keranjang
+    setIsCheckoutOpen(false)
+    setSuccessInvoice(invoiceNumber) // Tampilkan success modal
   }
 
-  const handleSuccessClose = () => {
-    setShowSuccess(false)
-    setLastOrder(null)
-  }
+  // Buat map agar pencarian O(1) di grid
+  const cartQtyMap = cart.reduce((map, item) => {
+    map[item.product.id] = item.qty
+    return map
+  }, {} as Record<string, number>)
 
   return (
     <div className={styles.posLayout}>
-      {/* ── Left Panel: Product Browser ─────────────────────── */}
-      <div className={styles.productPanel}>
-        {/* Top Bar */}
-        <div className={styles.topBar}>
-          <div className={styles.brandBar}>
-            <Image src="/logo.jpeg" alt="IndoBangunan Logo" width={220} height={44} style={{ objectFit: 'contain' }} />
+      <main className={styles.mainContent}>
+        <header className={styles.header}>
+          <div className={styles.brand}>
+            <Image src="/logo.jpeg" alt="IndoBangunan" width={140} height={32} style={{ objectFit: 'contain' }} />
           </div>
-
-          <div className={styles.searchWrapper}>
-            <span className={styles.searchIcon}>🔍</span>
-            <input
-              ref={searchRef}
-              type="text"
-              placeholder="Cari produk, SKU, atau nama..."
-              className={styles.searchInput}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              id="pos-search"
-            />
-            {search && (
-              <button className={styles.searchClear} onClick={() => setSearch('')}>✕</button>
-            )}
+          <div className={styles.headerTitle}>
+            <h2>Pilih Produk Anda</h2>
+            <p>Ketuk pada produk untuk menambahkan ke keranjang</p>
           </div>
-
-          {/* Mobile Cart Toggle */}
-          <button
-            className={styles.mobileCartBtn}
-            onClick={() => setCartOpen(true)}
-            id="mobile-cart-toggle"
-          >
-            🛒
-            {cartCount > 0 && <span className={styles.mobileCartBadge}>{cartCount}</span>}
-          </button>
+        </header>
+        
+        <div className={styles.gridWrapper}>
+          <ProductGrid 
+            products={products} 
+            isLoading={isLoading} 
+            onAddToCart={handleAddToCart} 
+            cartQtyMap={cartQtyMap}
+          />
         </div>
+      </main>
 
-        {/* Category Tabs */}
-        <div className={styles.categoryBar}>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              className={`${styles.categoryTab} ${activeCategory === cat ? styles.categoryTabActive : ''}`}
-              onClick={() => setActiveCategory(cat)}
-              id={`cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Product Grid */}
-        <ProductGrid
-          products={filteredProducts}
+      <aside className={styles.cartSidebar}>
+        <CartPanel 
           cart={cart}
-          loading={loading}
-          onAdd={addToCart}
-          onUpdateQty={updateQty}
+          onUpdateQty={handleUpdateQty}
+          onRemove={handleRemoveFromCart}
+          onCheckoutClick={() => setIsCheckoutOpen(true)}
         />
-      </div>
+      </aside>
 
-      {/* ── Right Panel: Cart ────────────────────────────────── */}
-      <CartPanel
-        cart={cart}
-        total={cartTotal}
-        cartCount={cartCount}
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        onUpdateQty={updateQty}
-        onRemove={removeItem}
-        onClear={clearCart}
-        onCheckout={() => setShowCheckout(true)}
-      />
-
-      {/* ── Modals ───────────────────────────────────────────── */}
-      {showCheckout && (
-        <CheckoutModal
+      {isCheckoutOpen && (
+        <CheckoutModal 
           cart={cart}
-          total={cartTotal}
-          onClose={() => setShowCheckout(false)}
-          onSuccess={handleOrderSuccess}
+          onClose={() => setIsCheckoutOpen(false)}
+          onSuccess={handleCheckoutSuccess}
         />
       )}
 
-      {showSuccess && lastOrder && (
-        <SuccessModal
-          invoice={lastOrder.invoice}
-          total={lastOrder.total}
-          onClose={handleSuccessClose}
+      {successInvoice && (
+        <SuccessModal 
+          invoiceNumber={successInvoice}
+          onClose={() => setSuccessInvoice(null)}
         />
       )}
     </div>

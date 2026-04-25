@@ -1,208 +1,199 @@
 'use client'
+
 import { useState } from 'react'
+import { POSCartItem } from '@/types/pos'
 import styles from './CheckoutModal.module.css'
-import type { CartItem } from '@/types/pos'
 
-interface Props {
-  cart: CartItem[]
-  total: number
+interface CheckoutModalProps {
+  cart: POSCartItem[]
   onClose: () => void
-  onSuccess: (invoice: string, total: number) => void
+  onSuccess: (invoiceNumber: string) => void
 }
 
-function formatRp(n: number) {
-  return 'Rp ' + n.toLocaleString('id-ID')
-}
+export default function CheckoutModal({ cart, onClose, onSuccess }: CheckoutModalProps) {
+  const [step, setStep] = useState<1 | 2>(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  
+  const [formData, setFormData] = useState({
+    customer_name: '',
+    customer_phone: '',
+    payment_method: 'cash'
+  })
 
-const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Tunai', icon: '💵', desc: 'Bayar langsung ke kasir' },
-  { id: 'qris', label: 'QRIS', icon: '📱', desc: 'Scan QR code untuk bayar' },
-  { id: 'transfer', label: 'Transfer', icon: '🏦', desc: 'Transfer bank / e-wallet' },
-]
+  const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0)
 
-export default function CheckoutModal({ cart, total, onClose, onSuccess }: Props) {
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [payMethod, setPayMethod] = useState('cash')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [step, setStep] = useState<'form' | 'review'>('form')
+  const formatRupiah = (number: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number)
+  }
 
-  const cartCount = cart.reduce((s, c) => s + c.qty, 0)
+  const handleNext = () => {
+    if (!formData.payment_method) {
+      setErrorMsg('Pilih metode pembayaran terlebih dahulu')
+      return
+    }
+    setErrorMsg('')
+    setStep(2)
+  }
 
   const handleSubmit = async () => {
-    setLoading(true)
-    setError('')
+    setIsLoading(true)
+    setErrorMsg('')
+
     try {
-      // Guest checkout — kita kirim langsung tanpa auth
-      // Untuk demo: kita buat invoice lokal jika belum ada backend auth
+      const payload = {
+        items: cart.map(item => ({ product_id: item.product.id, qty: item.qty })),
+        customer_name: formData.customer_name,
+        customer_phone: formData.customer_phone,
+        payment_method: formData.payment_method
+      }
+
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: name || null,
-          customer_phone: phone || null,
-          items: cart.map((c) => ({ product_id: c.product_id, qty: c.qty })),
-          payment_method: payMethod,
-        }),
+        body: JSON.stringify(payload)
       })
+
       const data = await res.json()
+
       if (!res.ok) {
-        setError(data.error ?? 'Terjadi kesalahan, coba lagi.')
-        return
+        throw new Error(data.error || 'Gagal memproses pesanan')
       }
-      onSuccess(data.invoice_number, data.total)
-    } catch {
-      setError('Koneksi gagal. Pastikan internet tersambung.')
-    } finally {
-      setLoading(false)
+
+      // Jika ada payment url dari Midtrans, redirect pelanggan
+      if (data.data.gateway_payment_url) {
+        window.open(data.data.gateway_payment_url, '_blank')
+      }
+
+      onSuccess(data.data.invoice_number)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Terjadi kesalahan sistem')
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className={styles.backdrop} onClick={(e) => e.target === e.currentTarget && !loading && onClose()}>
-      <div className={`${styles.modal} slide-up`}>
-        {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.headerLeft}>
-            <div className={styles.headerIcon}>🧾</div>
-            <div>
-              <h2 className={styles.title}>Checkout</h2>
-              <p className={styles.subtitle}>{cartCount} item · {formatRp(total)}</p>
+    <div className={styles.modalOverlay}>
+      <div className={`${styles.modalContent} bounce-in`}>
+        <div className={styles.modalHeader}>
+          <h2>{step === 1 ? 'Informasi Pesanan' : 'Konfirmasi Pesanan'}</h2>
+          <button onClick={onClose} className={styles.closeBtn}>&times;</button>
+        </div>
+
+        {errorMsg && <div className={styles.errorAlert}>{errorMsg}</div>}
+
+        <div className={styles.modalBody}>
+          {step === 1 && (
+            <div className={styles.step1}>
+              <div className={styles.inputGroup}>
+                <label>Nama Anda (Opsional)</label>
+                <input 
+                  type="text" 
+                  value={formData.customer_name} 
+                  onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
+                  placeholder="Misal: Bapak Budi" 
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <label>Nomor Telepon (Opsional)</label>
+                <input 
+                  type="tel" 
+                  value={formData.customer_phone} 
+                  onChange={(e) => setFormData({...formData, customer_phone: e.target.value})}
+                  placeholder="0812xxxxxx" 
+                />
+              </div>
+
+              <div className={styles.paymentSection}>
+                <label className={styles.sectionLabel}>Metode Pembayaran *</label>
+                <div className={styles.paymentMethods}>
+                  <label className={`${styles.paymentCard} ${formData.payment_method === 'cash' ? styles.paymentActive : ''}`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method" 
+                      value="cash"
+                      checked={formData.payment_method === 'cash'}
+                      onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+                    />
+                    <div className={styles.paymentInfo}>
+                      <span className={styles.paymentIcon}>💵</span>
+                      <span className={styles.paymentName}>Tunai / Cash</span>
+                      <small>Bayar di Kasir</small>
+                    </div>
+                  </label>
+                  
+                  <label className={`${styles.paymentCard} ${formData.payment_method === 'qris' ? styles.paymentActive : ''}`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method" 
+                      value="qris"
+                      checked={formData.payment_method === 'qris'}
+                      onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+                    />
+                    <div className={styles.paymentInfo}>
+                      <span className={styles.paymentIcon}>📱</span>
+                      <span className={styles.paymentName}>QRIS</span>
+                      <small>Scan Barcode</small>
+                    </div>
+                  </label>
+
+                  <label className={`${styles.paymentCard} ${formData.payment_method === 'transfer' ? styles.paymentActive : ''}`}>
+                    <input 
+                      type="radio" 
+                      name="payment_method" 
+                      value="transfer"
+                      checked={formData.payment_method === 'transfer'}
+                      onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
+                    />
+                    <div className={styles.paymentInfo}>
+                      <span className={styles.paymentIcon}>💳</span>
+                      <span className={styles.paymentName}>Transfer Bank</span>
+                      <small>VA Bank</small>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
-          </div>
-          <button className={styles.closeBtn} onClick={onClose} disabled={loading}>✕</button>
-        </div>
+          )}
 
-        {/* Step Indicator */}
-        <div className={styles.steps}>
-          <div className={`${styles.step} ${step === 'form' ? styles.stepActive : styles.stepDone}`}>
-            <div className={styles.stepNum}>{step === 'review' ? '✓' : '1'}</div>
-            <span>Info & Pembayaran</span>
-          </div>
-          <div className={styles.stepLine} />
-          <div className={`${styles.step} ${step === 'review' ? styles.stepActive : ''}`}>
-            <div className={styles.stepNum}>2</div>
-            <span>Konfirmasi</span>
-          </div>
-        </div>
-
-        <div className={styles.body}>
-          {step === 'form' ? (
-            <>
-              {/* Optional customer info */}
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}>👤 Informasi Pembeli (Opsional)</div>
-                <div className={styles.formGrid}>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Nama</label>
-                    <input
-                      id="checkout-name"
-                      type="text"
-                      className={styles.input}
-                      placeholder="Nama kamu (opsional)"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
+          {step === 2 && (
+            <div className={styles.step2}>
+              <div className={styles.summaryList}>
+                {cart.map(item => (
+                  <div key={item.product.id} className={styles.summaryItem}>
+                    <div className={styles.summaryItemInfo}>
+                      <span className={styles.summaryQty}>{item.qty}x</span>
+                      <span className={styles.summaryName}>{item.product.name}</span>
+                    </div>
+                    <span className={styles.summaryPrice}>{formatRupiah(item.subtotal)}</span>
                   </div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>No. Telepon</label>
-                    <input
-                      id="checkout-phone"
-                      type="tel"
-                      className={styles.input}
-                      placeholder="08xx-xxxx-xxxx (opsional)"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Payment Method */}
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}>💳 Metode Pembayaran</div>
-                <div className={styles.paymentOptions}>
-                  {PAYMENT_METHODS.map((m) => (
-                    <button
-                      key={m.id}
-                      className={`${styles.paymentOption} ${payMethod === m.id ? styles.paymentOptionActive : ''}`}
-                      onClick={() => setPayMethod(m.id)}
-                      id={`pay-${m.id}`}
-                    >
-                      <span className={styles.payIcon}>{m.icon}</span>
-                      <div>
-                        <div className={styles.payLabel}>{m.label}</div>
-                        <div className={styles.payDesc}>{m.desc}</div>
-                      </div>
-                      {payMethod === m.id && <div className={styles.payCheck}>✓</div>}
-                    </button>
-                  ))}
-                </div>
+              <div className={styles.summaryTotal}>
+                <span>Total Pembayaran:</span>
+                <span className={styles.totalAmount}>{formatRupiah(totalAmount)}</span>
               </div>
+              <p className={styles.paymentNote}>
+                Metode Pembayaran: <strong>{formData.payment_method.toUpperCase()}</strong>
+              </p>
+            </div>
+          )}
+        </div>
 
-              <button
-                className={`${styles.nextBtn} ripple-btn`}
-                onClick={() => setStep('review')}
-                id="checkout-next"
-              >
-                Lanjut ke Konfirmasi →
-              </button>
-            </>
+        <div className={styles.modalFooter}>
+          {step === 1 ? (
+            <button onClick={handleNext} className={styles.primaryBtn}>
+              Lanjut Konfirmasi
+            </button>
           ) : (
             <>
-              {/* Order Review */}
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}>📋 Ringkasan Pesanan</div>
-                <div className={styles.orderItems}>
-                  {cart.map((item) => (
-                    <div key={item.product_id} className={styles.orderItem}>
-                      <span className={styles.orderItemName}>{item.product_name}</span>
-                      <span className={styles.orderItemQty}>{item.qty} {item.unit}</span>
-                      <span className={styles.orderItemTotal}>{formatRp(item.unit_price * item.qty)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Summary */}
-              <div className={styles.summaryCard}>
-                {name && (
-                  <div className={styles.summaryRow}>
-                    <span>Nama</span><span>{name}</span>
-                  </div>
-                )}
-                <div className={styles.summaryRow}>
-                  <span>Metode Bayar</span>
-                  <span>{PAYMENT_METHODS.find(m => m.id === payMethod)?.label}</span>
-                </div>
-                <div className={styles.summaryRowTotal}>
-                  <span>Total</span>
-                  <span className={styles.totalAmt}>{formatRp(total)}</span>
-                </div>
-              </div>
-
-              {error && (
-                <div className={styles.errorBox}>⚠️ {error}</div>
-              )}
-
-              <div className={styles.btnRow}>
-                <button className={styles.backBtn} onClick={() => setStep('form')} disabled={loading}>
-                  ← Kembali
-                </button>
-                <button
-                  className={`${styles.confirmBtn} ripple-btn`}
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  id="confirm-order"
-                >
-                  {loading ? (
-                    <span className={styles.spinner} />
-                  ) : (
-                    <><span>✅</span> Konfirmasi Pesanan</>
-                  )}
-                </button>
-              </div>
+              <button onClick={() => setStep(1)} className={styles.secondaryBtn} disabled={isLoading}>
+                Kembali
+              </button>
+              <button onClick={handleSubmit} className={styles.primaryBtn} disabled={isLoading}>
+                {isLoading ? 'Memproses...' : 'Proses Pesanan'}
+              </button>
             </>
           )}
         </div>

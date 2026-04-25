@@ -129,6 +129,18 @@ export interface StockMovement {
   performer?: User
 }
 
+export interface AuditLog {
+  id: string
+  user_id: string | null
+  action: string
+  table_name: string | null
+  record_id: string | null
+  old_values: Record<string, unknown> | null
+  new_values: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: string
+}
+
 // ============================================================
 // API Request/Response Types
 // ============================================================
@@ -202,13 +214,19 @@ export type Database = {
   public: {
     Tables: {
       users: { Row: User; Insert: Partial<User>; Update: Partial<User> }
+      categories: { Row: Category; Insert: Partial<Category>; Update: Partial<Category> }
       products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> }
       sales: { Row: Sale; Insert: Partial<Sale>; Update: Partial<Sale> }
       sales_details: { Row: SaleDetail; Insert: Partial<SaleDetail>; Update: Partial<SaleDetail> }
       payments: { Row: Payment; Insert: Partial<Payment>; Update: Partial<Payment> }
       stock_movements: { Row: StockMovement; Insert: Partial<StockMovement>; Update: Partial<StockMovement> }
+      audit_logs: { Row: AuditLog; Insert: Partial<AuditLog>; Update: Partial<AuditLog> }
     }
     Functions: {
+      generate_invoice_number: {
+        Args: Record<string, never>
+        Returns: string
+      }
       update_stock_atomic: {
         Args: {
           p_product_id: string

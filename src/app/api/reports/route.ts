@@ -1,113 +1,96 @@
-// src/app/api/reports/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['owner', 'admin'])
   if (auth instanceof NextResponse) return auth
-
   const { supabase } = auth
-  const { searchParams } = new URL(req.url)
 
-  const type = searchParams.get('type') ?? 'summary'
-  const date_from = searchParams.get('date_from') ?? new Date(Date.now() - 30 * 86400000).toISOString()
-  const date_to = searchParams.get('date_to') ?? new Date().toISOString()
-
-  if (type === 'summary') {
-    const { data: salesData, error } = await supabase
+  try {
+    // 1. Dapatkan range waktu hari ini
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayIso = today.toISOString()
+    
+    // 2. Fetch data sales hari ini (sukses)
+    const { data: salesToday, error: salesError } = await supabase
       .from('sales')
-      .select('total, status, payment_method, created_at')
-      .eq('transaction_type', 'sale')
+      .select('total_amount')
       .eq('status', 'success')
-      .gte('created_at', date_from)
-      .lte('created_at', date_to)
-      .order('created_at')
+      .gte('created_at', todayIso)
 
-    if (error) {
-      return NextResponse.json({ error: 'Gagal mengambil data laporan', detail: error.message }, { status: 500 })
-    }
+    if (salesError) throw salesError
 
-    const totalRevenue = (salesData ?? []).reduce((s, r) => s + r.total, 0)
-    const totalTransactions = salesData?.length ?? 0
+    const totalPendapatan = salesToday?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
+    const jumlahTransaksi = salesToday?.length || 0
+    const rataRataTransaksi = jumlahTransaksi > 0 ? totalPendapatan / jumlahTransaksi : 0
 
-    // Group by date
-    const byDate: Record<string, { date: string; revenue: number; count: number }> = {}
-    for (const sale of salesData ?? []) {
-      const date = sale.created_at.slice(0, 10)
-      if (!byDate[date]) byDate[date] = { date, revenue: 0, count: 0 }
-      byDate[date].revenue += sale.total
-      byDate[date].count++
-    }
-
-    // Payment method breakdown
-    const byPayment: Record<string, number> = {}
-    for (const sale of salesData ?? []) {
-      byPayment[sale.payment_method] = (byPayment[sale.payment_method] ?? 0) + sale.total
-    }
-
-    return NextResponse.json({
-      summary: {
-        total_revenue: totalRevenue,
-        total_transactions: totalTransactions,
-        average_transaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
-      },
-      by_date: Object.values(byDate),
-      by_payment_method: byPayment,
-      total_revenue: totalRevenue,
-      total_transactions: totalTransactions,
-      average_transaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
-    })
-  }
-
-  if (type === 'top_products') {
-    const { data, error } = await supabase
-      .from('sales_details')
-      .select('product_id, product_name, product_sku, qty, line_total, sale:sales!inner(status, created_at)')
-      .eq('sale.status', 'success')
-      .gte('sale.created_at', date_from)
-      .lte('sale.created_at', date_to)
-
-    if (error) {
-      return NextResponse.json({ error: 'Gagal mengambil top produk', detail: error.message }, { status: 500 })
-    }
-
-    const productMap: Record<string, { product_id: string; name: string; sku: string; total_qty: number; total_revenue: number }> = {}
-    for (const detail of data ?? []) {
-      if (!productMap[detail.product_id]) {
-        productMap[detail.product_id] = {
-          product_id: detail.product_id,
-          name: detail.product_name,
-          sku: detail.product_sku,
-          total_qty: 0,
-          total_revenue: 0,
-        }
-      }
-      productMap[detail.product_id].total_qty += detail.qty
-      productMap[detail.product_id].total_revenue += detail.line_total
-    }
-
-    return NextResponse.json({
-      top_products: Object.values(productMap)
-        .sort((a, b) => b.total_revenue - a.total_revenue)
-        .slice(0, 20),
-    })
-  }
-
-  if (type === 'low_stock') {
-    const { data, error } = await supabase
+    // 3. Fetch produk stok rendah
+    // Catatan: kita tidak bisa nge-query `stock <= stock_minimum` langsung dengan mudah kecuali menggunakan rpc atau raw sql,
+    // Atau ambil semua produk dan hitung di memori (kurang ideal untuk scale, tapi cukup untuk MVP)
+    // Sebagai alternatif, kita bisa buat RPC atau ambil field yang diperlukan saja:
+    const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, sku, name, unit, stock, stock_minimum, category:categories(name)')
+      .select('stock, stock_minimum')
       .eq('is_active', true)
-      .order('stock')
-      .limit(50)
+      
+    if (productsError) throw productsError
 
-    if (error) {
-      return NextResponse.json({ error: 'Gagal mengambil data stok rendah' }, { status: 500 })
-    }
+    const jumlahStokRendah = products?.filter(p => p.stock <= p.stock_minimum).length || 0
 
-    const lowStock = (data ?? []).filter((p) => p.stock <= p.stock_minimum)
-    return NextResponse.json({ low_stock_products: lowStock, count: lowStock.length })
+    // 4. Fetch 5 transaksi terbaru (ambil metode pembayaran dari tabel payments juga jika bisa, tapi kita sederhanakan dengan fetch payments terpisah atau join)
+    // Karena Supabase foreign key dari payments ke sales, kita join sales dengan payments dan users
+    const { data: recentSales, error: recentError } = await supabase
+      .from('sales')
+      .select(`
+        id, 
+        invoice_number, 
+        created_at, 
+        total_amount, 
+        status, 
+        customer_name,
+        created_by,
+        users(full_name),
+        payments(payment_method)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (recentError) throw recentError
+
+    const formattedRecentSales = recentSales?.map(sale => {
+      // Pembayaran bisa lebih dari 1, kita ambil yang pertama atau mapping
+      const paymentMethod = sale.payments && sale.payments.length > 0 ? sale.payments[0].payment_method : 'cash'
+      // @ts-ignore
+      const kasirName = sale.users?.full_name || 'Kiosk (Guest)'
+
+      return {
+        id: sale.id,
+        invoice_number: sale.invoice_number,
+        created_at: sale.created_at,
+        total_amount: sale.total_amount,
+        status: sale.status,
+        customer_name: sale.customer_name,
+        kasir: kasirName,
+        payment_method: paymentMethod
+      }
+    })
+
+    // 5. Response
+    return NextResponse.json({
+      data: {
+        metrics: {
+          total_pendapatan: totalPendapatan,
+          jumlah_transaksi: jumlahTransaksi,
+          rata_rata_transaksi: rataRataTransaksi,
+          stok_rendah: jumlahStokRendah
+        },
+        recent_transactions: formattedRecentSales
+      }
+    }, { status: 200 })
+
+  } catch (err: any) {
+    console.error('API Reports Error:', err)
+    return NextResponse.json({ error: 'Gagal memuat laporan dashboard' }, { status: 500 })
   }
-
-  return NextResponse.json({ error: 'Unknown report type. Valid: summary, top_products, low_stock' }, { status: 400 })
 }

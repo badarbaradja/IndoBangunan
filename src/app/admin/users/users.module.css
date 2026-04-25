@@ -1,0 +1,195 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+}
+
+.primaryBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent-400), var(--accent-500));
+  color: var(--brand-600);
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(255, 213, 51, 0.2);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 10px rgba(255, 213, 51, 0.3);
+}
+
+.primaryBtn:active {
+  transform: scale(0.98);
+}
+
+.tableCard {
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.toolbar {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  width: 320px;
+  transition: all 0.2s ease;
+}
+
+.searchBox:focus-within {
+  border-color: var(--brand-500);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(18, 74, 161, 0.1);
+}
+
+.searchIcon {
+  font-size: 0.9rem;
+  color: var(--gray-500);
+  margin-right: 8px;
+}
+
+.searchBox input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--gray-900);
+}
+
+.searchBox input:focus {
+  outline: none;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: 14px 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.table td {
+  padding: 16px 20px;
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--brand-50);
+}
+
+.nameCol {
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.emailCol {
+  color: var(--gray-600);
+}
+
+.dateCol {
+  color: var(--gray-500);
+  font-size: 0.85rem !important;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px !important;
+  color: var(--gray-500) !important;
+  font-style: italic;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badgeActive {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green-500);
+}
+
+.badgeInactive {
+  background: var(--gray-200);
+  color: var(--gray-600);
+}
+
+.badgeOwner {
+  background: rgba(147, 51, 234, 0.15); /* Purple */
+  color: #9333ea;
+}
+
+.badgeAdmin {
+  background: rgba(59, 130, 246, 0.15); /* Blue */
+  color: #3b82f6;
+}
+
+.badgeWarehouse {
+  background: rgba(245, 158, 11, 0.15); /* Orange */
+  color: #f59e0b;
+}
+
+.badgeCashier {
+  background: rgba(16, 185, 129, 0.15); /* Emerald */
+  color: #10b981;
+}
+
+.badgeDefault {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}

@@ -1,33 +1,27 @@
-'use client'
+import { POSProduct } from '@/types/pos'
 import styles from './ProductGrid.module.css'
-import type { Product, CartItem } from '@/types/pos'
 
-interface Props {
-  products: Product[]
-  cart: CartItem[]
-  loading: boolean
-  onAdd: (product: Product) => void
-  onUpdateQty: (product_id: string, qty: number) => void
+interface ProductGridProps {
+  products: POSProduct[]
+  isLoading: boolean
+  onAddToCart: (product: POSProduct) => void
+  cartQtyMap: Record<string, number> // Untuk mengecek berapa qty di cart saat ini
 }
 
-function formatRp(n: number) {
-  return 'Rp ' + n.toLocaleString('id-ID')
-}
+export default function ProductGrid({ products, isLoading, onAddToCart, cartQtyMap }: ProductGridProps) {
+  const formatRupiah = (number: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number)
+  }
 
-export default function ProductGrid({ products, cart, loading, onAdd, onUpdateQty }: Props) {
-  const getCartItem = (id: string) => cart.find((c) => c.product_id === id)
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={styles.grid}>
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className={`${styles.card} ${styles.skeletonCard}`}>
-            <div className={`skeleton ${styles.skeletonImg}`} />
-            <div className={styles.skeletonBody}>
-              <div className={`skeleton ${styles.skeletonLine}`} style={{ width: '60%', height: 12 }} />
-              <div className={`skeleton ${styles.skeletonLine}`} style={{ width: '40%', height: 10 }} />
-              <div className={`skeleton ${styles.skeletonLine}`} style={{ width: '50%', height: 18 }} />
-            </div>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          <div key={i} className={styles.productCard}>
+            <div className={`skeleton ${styles.skeletonImg}`}></div>
+            <div className={`skeleton ${styles.skeletonTitle}`}></div>
+            <div className={`skeleton ${styles.skeletonPrice}`}></div>
+            <div className={`skeleton ${styles.skeletonBtn}`}></div>
           </div>
         ))}
       </div>
@@ -36,97 +30,69 @@ export default function ProductGrid({ products, cart, loading, onAdd, onUpdateQt
 
   if (products.length === 0) {
     return (
-      <div className={styles.empty}>
-        <div className={styles.emptyIcon}>🔍</div>
-        <h3>Produk tidak ditemukan</h3>
-        <p>Coba kata kunci lain atau pilih kategori berbeda</p>
+      <div className={styles.emptyState}>
+        <p>Tidak ada produk yang tersedia saat ini.</p>
       </div>
     )
   }
 
   return (
-    <div className={styles.gridWrapper}>
-      <div className={styles.grid}>
-        {products.map((product, idx) => {
-          const cartItem = getCartItem(product.id)
-          const qty = cartItem?.qty ?? 0
-          const outOfStock = (product.stock ?? 0) <= 0
+    <div className={styles.grid}>
+      {products.map(product => {
+        const inCartQty = cartQtyMap[product.id] || 0
+        const isOutOfStock = product.stock <= 0 && !product.allow_negative_stock
+        const isLowStock = product.stock <= product.stock_minimum && product.stock > 0
 
-          return (
-            <div
-              key={product.id}
-              className={`${styles.card} ${outOfStock ? styles.cardOos : ''} fade-in`}
-              style={{ animationDelay: `${idx * 0.04}s` }}
-              id={`product-${product.id}`}
-            >
-              {/* Image */}
-              <div className={styles.imgWrapper}>
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className={styles.img} />
-                ) : (
-                  <div className={styles.imgPlaceholder}>
-                    <span className={styles.imgEmoji}>🧱</span>
-                  </div>
-                )}
-
-                {/* Badges */}
-                {outOfStock && (
-                  <div className={styles.osBadge}>Habis</div>
-                )}
-                {product.is_low_stock && !outOfStock && (
-                  <div className={styles.lowBadge}>⚠️ Stok terbatas</div>
-                )}
-
-                {qty > 0 && (
-                  <div className={styles.addedBadge}>
-                    <span>✓ {qty} {product.unit}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className={styles.cardBody}>
-                <div className={styles.categoryChip}>{product.category?.name ?? 'Lainnya'}</div>
-                <h3 className={styles.productName}>{product.name}</h3>
-                <div className={styles.productSku}>SKU: {product.sku}</div>
-
-                <div className={styles.cardFooter}>
-                  <div>
-                    <div className={styles.price}>{formatRp(product.selling_price)}</div>
-                    <div className={styles.perUnit}>per {product.unit}</div>
-                  </div>
-
-                  {/* Add / Qty control */}
-                  {outOfStock ? (
-                    <div className={styles.oosLabel}>Stok Habis</div>
-                  ) : qty === 0 ? (
-                    <button
-                      className={`${styles.addBtn} ripple-btn`}
-                      onClick={() => onAdd(product)}
-                      id={`add-${product.id}`}
-                    >
-                      + Tambah
-                    </button>
-                  ) : (
-                    <div className={styles.qtyControl}>
-                      <button
-                        className={styles.qtyBtn}
-                        onClick={() => onUpdateQty(product.id, qty - 1)}
-                      >−</button>
-                      <span className={styles.qtyVal}>{qty}</span>
-                      <button
-                        className={styles.qtyBtn}
-                        onClick={() => onUpdateQty(product.id, qty + 1)}
-                        disabled={qty >= (product.stock ?? 999)}
-                      >+</button>
-                    </div>
-                  )}
-                </div>
-              </div>
+        return (
+          <div key={product.id} className={`${styles.productCard} fade-in`}>
+            {/* Status Badges */}
+            <div className={styles.badgeContainer}>
+              {isOutOfStock ? (
+                <span className={`${styles.badge} ${styles.badgeDanger}`}>Habis</span>
+              ) : isLowStock ? (
+                <span className={`${styles.badge} ${styles.badgeWarning}`}>Sisa {product.stock}</span>
+              ) : null}
             </div>
-          )
-        })}
-      </div>
+
+            <div className={styles.imagePlaceholder}>
+              {/* Fallback image as emoji for demo based on category or name */}
+              <span className={styles.emoji}>
+                {product.name.toLowerCase().includes('semen') ? '🧱' : 
+                 product.name.toLowerCase().includes('cat') ? '🎨' : 
+                 product.name.toLowerCase().includes('paku') ? '🔨' : '📦'}
+              </span>
+            </div>
+            
+            <div className={styles.productInfo}>
+              <h3 className={styles.productName}>{product.name}</h3>
+              <p className={styles.productCategory}>{product.category?.name || 'Umum'} • {product.sku}</p>
+              
+              <div className={styles.priceRow}>
+                <span className={styles.price}>{formatRupiah(product.selling_price)}</span>
+                <span className={styles.unit}>/{product.unit}</span>
+              </div>
+
+              {inCartQty > 0 ? (
+                <button 
+                  className={styles.addBtnActive}
+                  onClick={() => onAddToCart(product)}
+                  disabled={isOutOfStock}
+                >
+                  ✓ Di Keranjang ({inCartQty})
+                </button>
+              ) : (
+                <button 
+                  className={styles.addBtn}
+                  onClick={() => onAddToCart(product)}
+                  disabled={isOutOfStock}
+                >
+                  + Tambah
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

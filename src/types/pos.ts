@@ -1,23 +1,12 @@
-// src/types/pos.ts
-export interface Product {
-  id: string
-  name: string
-  sku: string
-  selling_price: number
-  stock: number
-  unit: string
-  image_url: string | null
-  category?: { name: string } | null
-  description?: string | null
-  is_low_stock?: boolean
-  is_out_of_stock?: boolean
+import { Product } from './database'
+
+export interface POSProduct extends Product {
+  // Tambahan tipe untuk relasi table
+  category?: { name: string }
 }
 
-export interface CartItem {
-  product_id: string
-  product_name: string
-  unit: string
+export interface POSCartItem {
+  product: POSProduct
   qty: number
-  unit_price: number
-  max_stock: number
+  subtotal: number
 }

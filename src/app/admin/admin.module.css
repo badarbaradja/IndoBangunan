@@ -210,6 +210,41 @@
 
 .statusSuccess { background: rgba(34,197,94,0.15); color: var(--green-500); }
 .statusPending { background: rgba(245,158,11,0.15); color: var(--yellow-500); }
+.statusVoid { background: rgba(239,68,68,0.15); color: var(--red-500); }
+.statusDefault { background: var(--gray-100); color: var(--gray-700); }
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 20px;
+}
+
+.statIconWrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+}
 
 .adminLayout {
   --bg: var(--gray-50);
@@ -221,4 +256,58 @@
   --text2: var(--gray-600);
   --text3: var(--gray-500);
   --accent: var(--brand-600);
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.sidebar {
+  justify-content: space-between;
+}
+
+.sidebarMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebarBtnActive {
+  background: var(--bg3);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--red-500);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.logoutBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
 }

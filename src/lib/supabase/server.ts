@@ -25,7 +25,7 @@ export function createServiceClient() {
     )
   }
 
-  return createClient<any>(url, serviceKey, {
+  return createClient<Database>(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -40,5 +40,5 @@ export function createServiceClient() {
 export function createBrowserClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createClient<any>(url, anonKey)
+  return createClient<Database>(url, anonKey)
 }
