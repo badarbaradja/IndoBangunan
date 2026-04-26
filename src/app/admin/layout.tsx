@@ -59,6 +59,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/transactions" className={`${styles.sidebarBtn} ${pathname === '/admin/transactions' ? styles.sidebarBtnActive : ''}`}>
               <span className={styles.sidebarIcon}>💰</span> Transaksi
             </Link>
+            <Link href="/admin/queue" className={`${styles.sidebarBtn} ${pathname === '/admin/queue' ? styles.sidebarBtnActive : ''}`}>
+              <span className={styles.sidebarIcon}>🧾</span> Antrean Kasir
+            </Link>
+            <Link href="/admin/reports" className={`${styles.sidebarBtn} ${pathname === '/admin/reports' ? styles.sidebarBtnActive : ''}`}>
+              <span className={styles.sidebarIcon}>📈</span> Laporan & Export
+            </Link>
             
             <div className={styles.sidebarLabel}>Inventaris</div>
             <Link href="/admin/inventory" className={`${styles.sidebarBtn} ${pathname === '/admin/inventory' ? styles.sidebarBtnActive : ''}`}>

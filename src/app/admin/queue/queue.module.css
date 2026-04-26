@@ -1,0 +1,549 @@
+/* ══════════════════════════════════════
+   Queue Page — Antrean Kasir Realtime
+══════════════════════════════════════ */
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pageTitle {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text, #111);
+  margin: 0 0 4px;
+}
+
+.pageSub {
+  font-size: 0.9rem;
+  color: var(--text2, #555);
+  margin: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Live Status Badge ── */
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+}
+
+.status_live {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+.status_connecting {
+  background: #fef9c3;
+  color: #a16207;
+  border-color: #fde047;
+}
+
+.status_error {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status_live .statusDot {
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.7); }
+}
+
+.lastUpdateNote {
+  font-size: 0.78rem;
+  color: var(--text3, #9ca3af);
+}
+
+.refreshBtn {
+  padding: 8px 16px;
+  background: var(--bg2, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text2, #555);
+  transition: all 0.15s;
+}
+
+.refreshBtn:hover {
+  background: var(--bg3, #f3f4f6);
+  border-color: var(--gray-400, #9ca3af);
+}
+
+/* ── Counter Bar ── */
+.counterBar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.counterItem {
+  flex: 1;
+  min-width: 160px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.counterNum {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--brand-700, #0b2f6b);
+  line-height: 1;
+}
+
+.counterLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text3, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Empty State ── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  color: var(--text3, #9ca3af);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.emptyState h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text2, #555);
+  margin: 0 0 8px;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border, #e5e7eb);
+  border-top-color: var(--brand-600, #124aa1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Queue Grid ── */
+.queueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* ── Queue Card ── */
+.queueCard {
+  background: var(--card, #fff);
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 18px;
+  padding: 24px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: cardSlideIn 0.3s ease;
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.queueCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* First card in queue gets special highlight — paling lama menunggu */
+.queueCardFirst {
+  border-color: var(--brand-400, #60a5fa);
+  box-shadow: 0 0 0 3px rgba(18, 74, 161, 0.08);
+}
+
+.queueCardFirst::before {
+  content: '⏰ Terlama';
+  position: absolute;
+  top: -10px;
+  left: 16px;
+  background: var(--brand-600, #124aa1);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.5px;
+}
+
+.queueBadge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  background: var(--bg2, #f3f4f6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text3, #9ca3af);
+}
+
+.invoiceNum {
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--brand-700, #0b2f6b);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.customerName {
+  font-size: 0.85rem;
+  color: var(--text2, #555);
+  font-weight: 500;
+}
+
+.totalAmount {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--text, #111);
+  margin: 4px 0;
+}
+
+.timeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.timeAgo {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand-600, #124aa1);
+}
+
+.timeExact {
+  font-size: 0.75rem;
+  color: var(--text3, #9ca3af);
+}
+
+.confirmBtn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.confirmBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+}
+
+.confirmBtn:active {
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════
+   Confirm Modal
+═══════════════════════════════ */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  backdrop-filter: blur(6px);
+  padding: 16px;
+}
+
+.modalCard {
+  background: #fff;
+  border-radius: 22px;
+  padding: 0;
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.3);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #111;
+  margin: 0;
+}
+
+.modalClose {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.modalClose:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.errorAlert {
+  margin: 0 24px;
+  padding: 12px 14px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin-top: 16px;
+}
+
+/* Order Summary */
+.orderSummary {
+  margin: 20px 24px 0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.monoFont {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  color: #0b2f6b;
+}
+
+.priceHighlight {
+  font-size: 1.25rem;
+  color: #111;
+}
+
+/* Input */
+.inputGroup {
+  padding: 16px 24px 0;
+}
+
+.inputLabel {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.amountInput {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-family: inherit;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  color: #111;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.amountInput:focus {
+  border-color: #124aa1;
+  box-shadow: 0 0 0 3px rgba(18, 74, 161, 0.1);
+}
+
+/* Quick amount buttons */
+.quickAmounts {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.quickBtn {
+  padding: 6px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: #1d4ed8;
+  transition: all 0.15s;
+}
+
+.quickBtn:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+/* Kembalian */
+.changeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 24px 0;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.changePos {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.changeBig {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #16a34a;
+}
+
+/* Actions */
+.modalActions {
+  display: flex;
+  gap: 10px;
+  padding: 20px 24px;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 14px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: #374151;
+  transition: background 0.15s;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.submitBtn {
+  flex: 2;
+  padding: 14px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

@@ -1,100 +1,215 @@
+/* ── Overlay ── */
 .modalOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  padding: 16px;
 }
 
 .modalContent {
-  background: white;
-  border-radius: var(--radius-lg);
+  background: #fff;
+  border-radius: 28px;
   width: 100%;
   max-width: 480px;
-  padding: 40px;
+  padding: 36px 32px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.4);
 }
 
+/* ── Icon ── */
 .successIcon {
   font-size: 5rem;
-  margin-bottom: 24px;
-  animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  line-height: 1;
+  margin-bottom: 12px;
+  animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-@keyframes scaleUp {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes bounceIn {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
+/* ── Title ── */
 .title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--gray-900);
-  margin: 0 0 24px 0;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #111;
+  margin: 0 0 20px;
 }
 
+/* ── Invoice Card ── */
 .invoiceCard {
-  background: var(--brand-50);
-  border: 2px dashed var(--brand-300);
-  border-radius: var(--radius-md);
-  padding: 24px;
   width: 100%;
-  margin-bottom: 24px;
-}
-
-.invoiceLabel {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--brand-600);
-  margin: 0 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.invoiceNumber {
-  font-family: monospace;
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--brand-700);
-  letter-spacing: 2px;
-}
-
-.instructions {
-  font-size: 1rem;
-  color: var(--gray-700);
-  line-height: 1.5;
-  margin: 0 0 32px 0;
-}
-
-.closeBtn {
-  width: 100%;
-  padding: 14px;
-  background: var(--gray-900);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s;
+  background: #eff6ff;
+  border: 2.5px dashed #60a5fa;
+  border-radius: 16px;
+  padding: 18px 20px;
   margin-bottom: 16px;
 }
 
+.invoiceLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.invoiceNumber {
+  font-family: 'Courier New', monospace;
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: #0a1f4d;
+  letter-spacing: 3px;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.invoiceHint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 8px 0 0;
+}
+
+/* ── Instruction Box (Cash only) ── */
+.instructionBox {
+  width: 100%;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.instructionCash {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #166534;
+}
+
+.instrIcon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.instrText {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.instrText strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.steps li {
+  font-size: 0.85rem;
+}
+
+/* ── Printed badge ── */
+.printedBadge {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #16a34a;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 99px;
+  padding: 6px 16px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Action Row ── */
+.actionRow {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.printBtn {
+  flex: 1;
+  padding: 13px 12px;
+  background: #f3f4f6;
+  border: 1.5px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+}
+
+.printBtn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.closeBtn {
+  flex: 2;
+  padding: 13px 12px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
 .closeBtn:hover {
-  background: var(--gray-800);
+  background: #1f2937;
+  transform: translateY(-1px);
+}
+
+/* ── Countdown ── */
+.countdownWrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.countdownBar {
+  height: 3px;
+  background: #2563eb;
+  border-radius: 99px;
+  transition: width 1s linear;
 }
 
 .autoCloseNote {
-  color: var(--gray-400);
-  font-size: 0.8rem;
+  color: #9ca3af;
+  font-size: 0.78rem;
+  align-self: center;
 }

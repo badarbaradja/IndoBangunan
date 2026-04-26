@@ -61,8 +61,7 @@ export async function GET(req: NextRequest) {
     const formattedRecentSales = recentSales?.map(sale => {
       // Pembayaran bisa lebih dari 1, kita ambil yang pertama atau mapping
       const paymentMethod = sale.payments && sale.payments.length > 0 ? sale.payments[0].payment_method : 'cash'
-      // @ts-ignore
-      const kasirName = sale.users?.full_name || 'Kiosk (Guest)'
+      const kasirName = (sale as unknown as { users?: { full_name?: string } }).users?.full_name || 'Kiosk (Guest)'
 
       return {
         id: sale.id,
@@ -89,7 +88,7 @@ export async function GET(req: NextRequest) {
       }
     }, { status: 200 })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('API Reports Error:', err)
     return NextResponse.json({ error: 'Gagal memuat laporan dashboard' }, { status: 500 })
   }

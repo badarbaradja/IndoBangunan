@@ -1,8 +1,9 @@
-import { Product } from './database'
+import { Product, Category } from './database'
 
-export interface POSProduct extends Product {
-  // Tambahan tipe untuk relasi table
-  category?: { name: string }
+// POSProduct menggunakan Product dari database secara langsung
+// Joined category cukup menggunakan Category yang sudah memiliki semua field
+export type POSProduct = Omit<Product, 'category'> & {
+  category?: Pick<Category, 'name'>
 }
 
 export interface POSCartItem {

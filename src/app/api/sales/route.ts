@@ -1,7 +1,7 @@
 // src/app/api/sales/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, logAudit, validateCartItems } from '@/lib/auth'
-import { CreateSaleRequest } from '@/types/database'
+import { CreateSaleRequest, SaleInsert, SaleDetailInsert, PaymentInsert } from '@/types/database'
 
 /**
  * Fallback invoice number jika RPC belum dibuat di Supabase
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
   // ── Generate nomor invoice ───────────────────────────────────────
   let invoiceNumber: string
   try {
-    const { data: rpcData, error: rpcError } = await supabase.rpc('generate_invoice_number' as never)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('generate_invoice_number')
     if (rpcError || !rpcData) throw new Error('RPC failed')
     invoiceNumber = String(rpcData)
   } catch {
@@ -93,26 +93,28 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Buat transaksi dengan status PENDING ──────────────────────────
+  const saleInsert: SaleInsert = {
+    invoice_number: invoiceNumber,
+    cashier_id: user.id,
+    customer_name: customer_name ?? null,
+    customer_phone: customer_phone ?? null,
+    subtotal: subtotal!,
+    discount_amount: appliedDiscount,
+    discount_percent: discountPercent,
+    tax_amount: taxAmount,
+    total,
+    payment_method,
+    status: 'pending',
+    notes: notes ?? null,
+    offline_id: offline_id ?? null,
+    is_offline_created: is_offline_created ?? false,
+    synced_at: is_offline_created ? new Date().toISOString() : null,
+    transaction_type: 'sale',
+  }
+
   const { data: sale, error: saleError } = await supabase
     .from('sales')
-    .insert({
-      invoice_number: invoiceNumber,
-      cashier_id: user.id,
-      customer_name: customer_name ?? null,
-      customer_phone: customer_phone ?? null,
-      subtotal: subtotal!,
-      discount_amount: appliedDiscount,
-      discount_percent: discountPercent,
-      tax_amount: taxAmount,
-      total,
-      payment_method,
-      status: 'pending',
-      notes: notes ?? null,
-      offline_id: offline_id ?? null,
-      is_offline_created: is_offline_created ?? false,
-      synced_at: is_offline_created ? new Date().toISOString() : null,
-      transaction_type: 'sale',
-    })
+    .insert(saleInsert)
     .select()
     .single()
 
@@ -122,19 +124,19 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Insert detail item ────────────────────────────────────────────
-  const { error: detailsError } = await supabase.from('sales_details').insert(
-    validatedItems!.map((item) => ({
-      sale_id: sale.id,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      product_sku: item.product_sku,
-      unit: item.unit,
-      qty: item.qty,
-      unit_price: item.unit_price,
-      discount_amount: item.discount_amount,
-      line_total: item.line_total,
-    }))
-  )
+  const detailsInsert: SaleDetailInsert[] = validatedItems!.map((item) => ({
+    sale_id: sale.id,
+    product_id: item.product_id,
+    product_name: item.product_name,
+    product_sku: item.product_sku,
+    unit: item.unit,
+    qty: item.qty,
+    unit_price: item.unit_price,
+    discount_amount: item.discount_amount,
+    line_total: item.line_total,
+  }))
+
+  const { error: detailsError } = await supabase.from('sales_details').insert(detailsInsert)
 
   if (detailsError) {
     // Rollback: void sale yang baru dibuat
@@ -148,17 +150,19 @@ export async function POST(req: NextRequest) {
   if (payment_method === 'cash') {
     const amountPaid = body.discount_amount ?? total
 
+    const cashPaymentInsert: PaymentInsert = {
+      sale_id: sale.id,
+      payment_method: 'cash',
+      amount: total,
+      amount_paid: amountPaid,
+      change_amount: Math.max(0, amountPaid - total),
+      status: 'success',
+      processed_at: new Date().toISOString(),
+    }
+
     const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
-      .insert({
-        sale_id: sale.id,
-        payment_method: 'cash',
-        amount: total,
-        amount_paid: amountPaid,
-        change_amount: Math.max(0, amountPaid - total),
-        status: 'success',
-        processed_at: new Date().toISOString(),
-      })
+      .insert(cashPaymentInsert)
       .select()
       .single()
 
@@ -172,7 +176,7 @@ export async function POST(req: NextRequest) {
 
     // Kurangi stok (atomic, aman dari race condition)
     try {
-      await supabase.rpc('process_sale_stock', { p_sale_id: sale.id } as never)
+      await supabase.rpc('process_sale_stock', { p_sale_id: sale.id })
     } catch (stockError) {
       console.error('Stock update error (non-fatal):', stockError)
       await logAudit(supabase, {
@@ -185,15 +189,17 @@ export async function POST(req: NextRequest) {
     }
   } else {
     // QRIS / Transfer: buat payment PENDING, tunggu webhook
+    const pendingPaymentInsert: PaymentInsert = {
+      sale_id: sale.id,
+      payment_method,
+      amount: total,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    }
+
     const { data: paymentData } = await supabase
       .from('payments')
-      .insert({
-        sale_id: sale.id,
-        payment_method,
-        amount: total,
-        status: 'pending',
-        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      })
+      .insert(pendingPaymentInsert)
       .select()
       .single()
 
@@ -236,7 +242,7 @@ export async function GET(req: NextRequest) {
     query = query.eq('cashier_id', user.id)
   }
 
-  if (status) query = query.eq('status', status)
+  if (status) query = query.eq('status', status as 'pending' | 'success' | 'void' | 'returned')
   if (date_from) query = query.gte('created_at', date_from)
   if (date_to) query = query.lte('created_at', date_to)
 

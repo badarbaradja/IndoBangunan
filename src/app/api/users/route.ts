@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, logAudit } from '@/lib/auth'
+import { UserInsert, UserRole } from '@/types/database'
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req, ['owner', 'admin'])
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth
   const { user, supabase } = auth // supabase disini adalah Service Role Client karena di-create oleh requireAuth
 
-  let body: any
+  let body: { email?: string; password?: string; full_name?: string; role?: UserRole; is_active?: boolean }
   try {
     body = await req.json()
   } catch {
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   const newUserId = authData.user.id
 
   // 2. Insert into public.users table
-  const newUserRecord = {
+  const newUserRecord: UserInsert = {
     id: newUserId,
     full_name,
     email,
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     action: 'CREATE_USER',
     table_name: 'users',
     record_id: newUserId,
-    new_values: newUserRecord
+    new_values: newUserRecord as unknown as Record<string, unknown>
   })
 
   return NextResponse.json({ data: userRecord }, { status: 201 })

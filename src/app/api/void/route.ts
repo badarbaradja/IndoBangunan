@@ -1,6 +1,7 @@
-// app/api/sales/void/route.ts
+// app/api/void/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, logAudit } from '@/lib/auth'
+import { Sale, SaleDetail, SaleInsert } from '@/types/database'
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req, ['owner', 'admin'])
@@ -15,15 +16,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch original sale
-  const { data: originalSale } = await supabase
+  const { data: originalSaleRaw } = await supabase
     .from('sales')
     .select('*, details:sales_details(*)')
     .eq('id', sale_id)
     .single()
 
-  if (!originalSale) {
+  if (!originalSaleRaw) {
     return NextResponse.json({ error: 'Sale not found' }, { status: 404 })
   }
+
+  // Cast ke Sale dengan details agar properti dikenali TypeScript
+  const originalSale = originalSaleRaw as Sale & { details?: SaleDetail[] }
 
   if (originalSale.status === 'void') {
     return NextResponse.json({ error: 'Sale already voided' }, { status: 409 })
@@ -38,28 +42,30 @@ export async function POST(req: NextRequest) {
   }
 
   // Generate void invoice number
-  const { data: invoiceData } = await supabase.rpc('generate_invoice_number' as never)
+  const { data: invoiceData } = await supabase.rpc('generate_invoice_number')
   const voidInvoiceNumber = `VOID-${invoiceData}`
 
   // Create VOID transaction (append-only - DO NOT edit original)
+  const voidSaleInsert: SaleInsert = {
+    invoice_number: voidInvoiceNumber,
+    cashier_id: user.id,
+    customer_name: originalSale.customer_name,
+    customer_phone: originalSale.customer_phone,
+    subtotal: -originalSale.subtotal,
+    discount_amount: -originalSale.discount_amount,
+    discount_percent: originalSale.discount_percent,
+    tax_amount: -originalSale.tax_amount,
+    total: -originalSale.total,
+    payment_method: originalSale.payment_method,
+    status: 'void',
+    notes: `VOID of ${originalSale.invoice_number}: ${reason}`,
+    original_sale_id: sale_id,
+    transaction_type: 'void',
+  }
+
   const { data: voidSale, error: voidError } = await supabase
     .from('sales')
-    .insert({
-      invoice_number: voidInvoiceNumber,
-      cashier_id: user.id,
-      customer_name: originalSale.customer_name,
-      customer_phone: originalSale.customer_phone,
-      subtotal: -originalSale.subtotal,
-      discount_amount: -originalSale.discount_amount,
-      discount_percent: originalSale.discount_percent,
-      tax_amount: -originalSale.tax_amount,
-      total: -originalSale.total,
-      payment_method: originalSale.payment_method,
-      status: 'void',
-      notes: `VOID of ${originalSale.invoice_number}: ${reason}`,
-      original_sale_id: sale_id,
-      transaction_type: 'void',
-    })
+    .insert(voidSaleInsert)
     .select()
     .single()
 
@@ -70,7 +76,7 @@ export async function POST(req: NextRequest) {
   // Reverse stock (return items to inventory)
   for (const detail of (originalSale.details ?? [])) {
     try {
-      await supabase.rpc('update_stock_atomic' as never, {
+      await supabase.rpc('update_stock_atomic', {
         p_product_id: detail.product_id,
         p_qty_change: detail.qty, // positive = return to stock
         p_movement_type: 'void_return',
@@ -78,7 +84,7 @@ export async function POST(req: NextRequest) {
         p_reference_id: voidSale.id,
         p_performed_by: user.id,
         p_notes: `Void: ${voidInvoiceNumber}`,
-      } as never)
+      })
     } catch (stockErr) {
       console.error('Stock reversal error:', stockErr)
     }

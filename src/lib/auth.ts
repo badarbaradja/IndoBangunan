@@ -1,7 +1,7 @@
 // src/lib/auth.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from './supabase/server'
-import { User, UserRole } from '@/types/database'
+import { User, UserRole, AuditLogInsert } from '@/types/database'
 
 export interface AuthContext {
   user: User
@@ -36,31 +36,25 @@ export async function requireAuth(
     return NextResponse.json({ error: 'User profile not found. Pastikan user sudah terdaftar di tabel users.' }, { status: 403 })
   }
 
-  if (!profile.is_active) {
+  const typedProfile = profile as User
+
+  if (!typedProfile.is_active) {
     return NextResponse.json({ error: 'User account is inactive' }, { status: 403 })
   }
 
-  if (allowedRoles && !allowedRoles.includes(profile.role as UserRole)) {
+  if (allowedRoles && !allowedRoles.includes(typedProfile.role)) {
     return NextResponse.json(
-      { error: `Access denied. Required: ${allowedRoles.join(', ')}. Your role: ${profile.role}` },
+      { error: `Access denied. Required: ${allowedRoles.join(', ')}. Your role: ${typedProfile.role}` },
       { status: 403 }
     )
   }
 
-  return { user: profile as User, supabase }
+  return { user: typedProfile, supabase }
 }
 
 export async function logAudit(
   supabase: ReturnType<typeof createServiceClient>,
-  params: {
-    user_id: string | null
-    action: string
-    table_name?: string
-    record_id?: string
-    old_values?: Record<string, unknown>
-    new_values?: Record<string, unknown>
-    ip_address?: string
-  }
+  params: AuditLogInsert
 ) {
   try {
     await supabase.from('audit_logs').insert({
@@ -113,7 +107,23 @@ export async function validateCartItems(
     return { valid: false, error: 'Failed to fetch products from database' }
   }
 
-  const productMap = new Map((products ?? []).map((p) => [p.id, p]))
+  // Gunakan explicit type assertion untuk produk yang di-fetch
+  type FetchedProduct = {
+    id: string
+    name: string
+    sku: string
+    unit: string
+    selling_price: number
+    wholesale_price: number | null
+    min_wholesale_qty: number
+    stock: number
+    allow_negative_stock: boolean
+    negative_stock_limit: number
+    is_active: boolean
+  }
+
+  const productList = (products ?? []) as FetchedProduct[]
+  const productMap = new Map(productList.map((p) => [p.id, p]))
   const validatedItems = []
   let subtotal = 0
 

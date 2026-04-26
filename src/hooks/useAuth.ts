@@ -56,7 +56,9 @@ export function useAuth() {
         if (error) {
           console.error('Error fetching user role:', error)
         } else if (data && isMounted) {
-          setRole(data.role as UserRole)
+          // Cast ke User type agar TypeScript mengenali properti role
+          const typedData = data as { role: UserRole }
+          setRole(typedData.role)
         }
       } catch (err) {
         console.error('Unexpected error fetching user role:', err)

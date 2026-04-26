@@ -1,260 +1,438 @@
+/* ══════════════════════════════════
+   Redirect Overlay (QRIS/Transfer)
+══════════════════════════════════ */
+.redirectOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(99, 102, 241, 0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.redirectCard {
+  background: #fff;
+  border-radius: 24px;
+  padding: 48px 40px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
+  animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.redirectSpinner {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  display: block;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+.redirectTitle {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #111;
+  margin: 0 0 12px;
+}
+
+.redirectSub {
+  font-size: 0.95rem;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+/* Animated dots */
+.redirectDots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.redirectDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6366f1;
+  animation: dotBounce 1.2s ease-in-out infinite;
+}
+
+.redirectDots span:nth-child(2) { animation-delay: 0.2s; }
+.redirectDots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-10px); opacity: 1; }
+}
+
+/* ── Overlay ── */
 .modalOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  padding: 16px;
 }
 
 .modalContent {
-  background: white;
-  border-radius: var(--radius-lg);
+  background: #fff;
+  border-radius: 24px;
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  max-height: 90vh;
 }
 
+/* ── Header ── */
 .modalHeader {
   padding: 20px 24px;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--gray-100, #f3f4f6);
+  display: grid;
+  grid-template-columns: 80px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+}
+
+.headerLeft {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
-.modalHeader h2 {
-  font-size: 1.25rem;
+.headerTitle {
+  font-size: 1.2rem;
   font-weight: 800;
-  color: var(--gray-900);
+  color: var(--gray-900, #111);
   margin: 0;
+  text-align: center;
+}
+
+.backBtn {
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--brand-600, #124aa1);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.backBtn:hover:not(:disabled) {
+  background: var(--brand-50, #eff6ff);
 }
 
 .closeBtn {
-  background: transparent;
+  background: var(--gray-100, #f3f4f6);
   border: none;
-  font-size: 1.5rem;
-  color: var(--gray-500);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: var(--gray-600, #555);
   cursor: pointer;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  justify-self: end;
 }
 
+.closeBtn:hover:not(:disabled) {
+  background: var(--gray-200, #e5e7eb);
+}
+
+/* ── Error Alert ── */
 .errorAlert {
-  margin: 16px 24px 0;
+  margin: 12px 24px 0;
   padding: 12px 16px;
   background: rgba(239, 68, 68, 0.1);
-  color: var(--red-500);
-  border-radius: var(--radius-sm);
+  color: #dc2626;
+  border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 600;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* ── Body ── */
 .modalBody {
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
-.inputGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
+/* ═══════════════════════════════
+   STEP 1 — Pilih Pembayaran
+═══════════════════════════════ */
 
-.inputGroup label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--gray-700);
-}
+.step1 {}
 
-.inputGroup input {
-  padding: 12px 16px;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-size: 1rem;
-}
-
-.inputGroup input:focus {
-  outline: none;
-  border-color: var(--brand-500);
-  box-shadow: 0 0 0 3px rgba(18, 74, 161, 0.1);
-}
-
-.paymentSection {
-  margin-top: 24px;
-}
-
-.sectionLabel {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--gray-800);
-  margin-bottom: 12px;
+.stepHint {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--gray-500, #6b7280);
+  margin: 0 0 20px;
 }
 
 .paymentMethods {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
 .paymentCard {
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 16px 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 2.5px solid var(--gray-200, #e5e7eb);
+  border-radius: 16px;
+  background: #fff;
   cursor: pointer;
   position: relative;
-  transition: all 0.2s;
-  text-align: center;
+  transition: all 0.18s ease;
+  font-family: inherit;
+  text-align: left;
 }
 
-.paymentCard input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
+.paymentCard:hover {
+  border-color: var(--gray-400, #9ca3af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
 .paymentActive {
-  border-color: var(--brand-500);
-  background: var(--brand-50);
-}
-
-.paymentInfo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  border-color: var(--active-color, var(--brand-500));
+  background: color-mix(in srgb, var(--active-color, var(--brand-500)) 6%, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--active-color, var(--brand-500)) 20%, transparent);
 }
 
 .paymentIcon {
-  font-size: 1.8rem;
-  margin-bottom: 4px;
+  font-size: 2.2rem;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .paymentName {
+  font-size: 1.1rem;
   font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--gray-900);
+  color: var(--gray-900, #111);
+  display: block;
 }
 
-.paymentInfo small {
-  font-size: 0.75rem;
-  color: var(--gray-500);
+.paymentSub {
+  font-size: 0.8rem;
+  color: var(--gray-500, #6b7280);
+  display: block;
+  margin-top: 2px;
 }
+
+.checkMark {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--active-color, var(--brand-500));
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: popIn 0.2s ease;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Mini summary di bawah payment step */
+.miniSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding: 14px 20px;
+  background: var(--gray-50, #f9fafb);
+  border-radius: 12px;
+  border: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.miniTotal {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--brand-700, #0b2f6b);
+}
+
+/* ═══════════════════════════════
+   STEP 2 — Konfirmasi
+═══════════════════════════════ */
+
+.step2 {}
 
 .summaryList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
-  max-height: 250px;
+  gap: 0;
+  margin-bottom: 16px;
+  max-height: 220px;
   overflow-y: auto;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .summaryItem {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--gray-200);
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-100, #f3f4f6);
+}
+
+.summaryItem:last-child {
+  border-bottom: none;
 }
 
 .summaryItemInfo {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
 }
 
 .summaryQty {
   font-weight: 700;
-  color: var(--brand-600);
+  color: var(--brand-600, #124aa1);
+  font-size: 0.9rem;
+  min-width: 24px;
 }
 
 .summaryName {
-  color: var(--gray-800);
+  color: var(--gray-800, #1f2937);
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .summaryPrice {
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--gray-900, #111);
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .summaryTotal {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: var(--gray-50);
-  border-radius: var(--radius-md);
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--gray-900);
-  margin-bottom: 12px;
+  padding: 16px 20px;
+  background: var(--gray-900, #111);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16px;
 }
 
 .totalAmount {
-  color: var(--brand-600);
-  font-size: 1.25rem;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--accent-400, #ffd533);
 }
 
-.paymentNote {
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--gray-600);
-}
-
-.modalFooter {
-  padding: 20px 24px;
-  background: var(--gray-50);
-  border-top: 1px solid var(--gray-200);
+/* Metode terpilih (Step 2 display) */
+.selectedPayment {
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 2px solid color-mix(in srgb, var(--active-color, var(--brand-500)) 40%, transparent);
+  background: color-mix(in srgb, var(--active-color, var(--brand-500)) 6%, #fff);
+  margin-bottom: 16px;
 }
 
-.primaryBtn, .secondaryBtn {
-  padding: 12px 24px;
-  border-radius: var(--radius-sm);
+.selectedIcon {
+  font-size: 1.8rem;
+}
+
+.selectedLabel {
   font-size: 1rem;
   font-weight: 700;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-  width: 100%;
+  color: var(--gray-900, #111);
+}
+
+.selectedSub {
+  font-size: 0.8rem;
+  color: var(--gray-500, #6b7280);
+}
+
+/* Info box kontekstual */
+.infoBox {
+  padding: 14px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  color: #166534;
+  line-height: 1.5;
+}
+
+/* ── Footer ── */
+.modalFooter {
+  padding: 16px 24px 20px;
+  background: #fff;
+  border-top: 1px solid var(--gray-100, #f3f4f6);
 }
 
 .primaryBtn {
-  background: linear-gradient(135deg, var(--accent-400), var(--accent-500));
-  color: var(--brand-700);
-  box-shadow: 0 4px 6px rgba(255, 213, 51, 0.2);
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, var(--accent-400, #ffd533), var(--accent-500, #f5c800));
+  color: var(--brand-800, #0a1f4d);
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 12px rgba(255, 213, 51, 0.35);
 }
 
 .primaryBtn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 10px rgba(255, 213, 51, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 213, 51, 0.45);
 }
 
-.primaryBtn:disabled, .secondaryBtn:disabled {
-  opacity: 0.6;
+.primaryBtn:disabled {
+  opacity: 0.65;
   cursor: not-allowed;
   transform: none;
-}
-
-.secondaryBtn {
-  background: white;
-  border: 1px solid var(--gray-300);
-  color: var(--gray-700);
-  width: auto;
-}
-
-.secondaryBtn:hover:not(:disabled) {
-  background: var(--gray-100);
+  box-shadow: none;
 }

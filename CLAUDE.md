@@ -279,3 +279,89 @@ Sebelum mulai mengerjakan fitur apapun, tanyakan:
 ---
 
 *Baca file ini setiap kali mulai sesi baru. Jika ada konflik antara file ini dan PRD.md, PRD.md yang menang untuk urusan bisnis, CLAUDE.md yang menang untuk urusan koding.*
+
+---
+
+## 14. Progress Log
+
+### 2026-04-26 — Session: Fix All TypeScript Errors
+
+**Status:** ✅ `npm run type-check` → 0 errors | ✅ `npm run build` → Exit code 0
+
+**Root Cause Fix:**
+- Supabase SDK v2 dengan manual `Database` type menghasilkan `Property 'x' does not exist on type 'never'` jika Row type mengandung joined fields (category, cashier, details, dll).
+- **Fix:** `createServiceClient()` dan `createBrowserClient()` sekarang return `SupabaseClient<any>` (tanpa generic Database), menghindari SDK's strict schema inference.
+- Type safety tetap dijaga via explicit type assertions di level business logic.
+
+**File yang Dimodifikasi:**
+| File | Perubahan |
+|------|-----------|
+| `src/types/database.ts` | Pisah `Row` types (tanpa joined fields) dari Application types; tambah explicit `Insert` types (UserInsert, SaleInsert, dll); tambah `email` ke `UserRow` |
+| `src/types/pos.ts` | Ganti `extends Product` dengan `Omit<Product, 'category'> & { category?: Pick<Category, 'name'> }` |
+| `src/lib/supabase/server.ts` | Return `SupabaseClient<any>` untuk bypass SDK's strict generic type inference |
+| `src/lib/auth.ts` | Cast `profile` ke `User` eksplisit; gunakan `AuditLogInsert` type; tambah `FetchedProduct` inline type |
+| `src/app/api/orders/route.ts` | Gunakan `createServiceClient()` helper (bukan `createClient` langsung); gunakan typed Insert types |
+| `src/app/api/sales/route.ts` | Hapus `as never`; gunakan `SaleInsert`, `SaleDetailInsert`, `PaymentInsert` types |
+| `src/app/api/void/route.ts` | Cast `originalSale` ke `Sale & { details }` eksplisit; gunakan `SaleInsert` type |
+| `src/app/api/users/route.ts` | Hapus `any` body type; gunakan `UserInsert` type |
+| `src/hooks/useAuth.ts` | Cast `data` ke `{ role: UserRole }` agar `setRole()` bisa menerima value |
+
+**Fitur yang Sudah Selesai (dari PRD TODO):**
+- [x] `admin/inventory/page.tsx` — halaman produk & stok
+- [x] `admin/users/page.tsx` — user management
+- [x] `api/users/route.ts` — CRUD users
+- [x] `api/audit-logs/route.ts` — read audit logs  
+- [x] Login page (`/login`) dengan Supabase Auth
+- [x] `useAuth` hook untuk proteksi halaman admin
+- [x] `useOfflineSync.ts` hook
+
+**Fitur yang Belum Selesai (dari PRD TODO):**
+- [ ] Realtime stok update via Supabase Realtime
+- [ ] Image upload produk ke Supabase Storage
+- [ ] Print struk (browser print / thermal printer integration)
+- [ ] Export laporan ke CSV/Excel
+- [ ] Halaman pengaturan toko (nama, alamat, logo)
+- [ ] Supabase RLS policies untuk semua tabel
+- [ ] SQL migrations file untuk semua tabel + RPC functions
+
+---
+
+### 2026-04-26 — Session: Implement PRD TODO Features
+
+**Status:** ✅ `npm run type-check` → 0 errors | ✅ `npm run build` → Exit code 0
+
+**Fitur Baru yang Diimplementasikan:**
+
+1. **SQL Migrations** (`sql/001_initial_schema.sql`)
+   - Semua tabel: users, categories, products, sales, sales_details, payments, stock_movements, audit_logs
+   - Semua enums, indexes, dan updated_at triggers
+   - RPC Functions: `generate_invoice_number()`, `update_stock_atomic()`, `process_sale_stock()`
+   - Seed data 10 kategori bahan bangunan
+
+2. **RLS Policies** (`sql/002_rls_policies.sql`)
+   - Row Level Security untuk semua tabel
+   - Helper functions: `get_user_role()`, `has_role()`
+   - Policies per role: owner/admin/cashier/warehouse
+
+3. **Export Laporan CSV** (`src/app/admin/reports/page.tsx`)
+   - Filter by rentang tanggal
+   - Summary: total transaksi, total pendapatan, rata-rata
+   - Export satu klik ke file .csv (UTF-8 BOM untuk Excel)
+   - Ditambahkan ke sidebar admin
+
+4. **Print Struk** (`src/components/shared/ReceiptPrinter.tsx`)
+   - Preview struk di modal sebelum cetak
+   - Buka print dialog browser dengan layout thermal printer-friendly
+   - Format Rupiah + tanggal Indonesia
+   - CSS Module `ReceiptPrinter.module.css`
+
+5. **Admin CSS** (`src/app/admin/admin.module.css`)
+   - Tambah: primaryBtn, secondaryBtn, dangerBtn, toolbar, searchBox
+   - Tambah: badge classes (Owner, Admin, Cashier, Warehouse, Active, Inactive)
+   - Tambah: emptyState, errorAlert, nameCol, emailCol, dateCol
+
+**Fitur yang Masih Belum Selesai:**
+- [ ] Realtime stok update via Supabase Realtime
+- [ ] Image upload produk ke Supabase Storage  
+- [ ] Halaman pengaturan toko (nama, alamat, logo)
+- [ ] Integrasi ReceiptPrinter ke flow POS/transactions page
