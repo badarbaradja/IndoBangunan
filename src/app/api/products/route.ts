@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, logAudit } from '@/lib/auth'
 
+// Mematikan cache agresif Next.js agar data selalu fresh dari database
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   // 1. Auth check: Hanya owner dan admin yang bisa tambah produk
   const auth = await requireAuth(req, ['owner', 'admin'])
