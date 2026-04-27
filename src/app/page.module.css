@@ -53,22 +53,7 @@
   background: var(--brand-50);
 }
 
-.navLinkAdmin {
-  color: var(--brand-700);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.95rem;
-  transition: var(--transition);
-  padding: 8px 20px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--accent-400);
-  background: var(--accent-50);
-}
 
-.navLinkAdmin:hover {
-  background: var(--accent-100);
-  border-color: var(--accent-500);
-}
 
 /* Hero */
 .hero {
@@ -148,26 +133,7 @@
   box-shadow: 0 8px 30px rgba(255, 209, 0, 0.5);
 }
 
-.ctaSecondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 2px solid var(--brand-200);
-  color: var(--brand-600);
-  text-decoration: none;
-  padding: 14px 32px;
-  border-radius: var(--radius-lg);
-  font-weight: 700;
-  font-size: 1rem;
-  transition: var(--transition);
-}
 
-.ctaSecondary:hover {
-  background: var(--brand-50);
-  border-color: var(--brand-300);
-  transform: translateY(-2px);
-}
 
 /* Stats */
 .stats {
@@ -333,6 +299,24 @@
   color: var(--gray-500);
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footerAdminLink {
+  color: var(--gray-400);
+  font-size: 0.75rem;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.footerAdminLink:hover {
+  color: var(--gray-600);
 }
 
 @media (max-width: 640px) {

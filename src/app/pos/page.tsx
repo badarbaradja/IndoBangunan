@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
-import CheckoutModal from '@/components/pos/CheckoutModal'
 import SuccessModal from '@/components/pos/SuccessModal'
 import ReceiptPrinter from '@/components/shared/ReceiptPrinter'
+import PaymentSelectionView, { PaymentMethod } from '@/components/pos/PaymentSelectionView'
+import OrderConfirmationModal from '@/components/pos/OrderConfirmationModal'
 import { POSProduct, POSCartItem } from '@/types/pos'
 import styles from './pos.module.css'
 import Image from 'next/image'
+import Link from 'next/link'
 
 // Data struk yang disimpan setelah checkout sukses
 interface ReceiptData {
@@ -29,7 +31,13 @@ export default function POSPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [cart, setCart] = useState<POSCartItem[]>([])
 
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  // ── UI State ──
+  const [view, setView] = useState<'shop' | 'payment'>('shop')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false)
+  const [orderErrorMsg, setOrderErrorMsg] = useState('')
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   // ── State sukses + struk (hanya untuk Cash) ──
   const [successInvoice, setSuccessInvoice] = useState<string | null>(null)
@@ -137,11 +145,62 @@ export default function POSPage() {
     setCart((prevCart) => prevCart.filter(item => item.product.id !== productId))
   }
 
-  // ── Dipanggil CheckoutModal HANYA untuk Cash ──────────────────────
+  const handleConfirmOrder = async () => {
+    if (!selectedPaymentMethod) return
+    setIsProcessingOrder(true)
+    setOrderErrorMsg('')
+
+    try {
+      const payload = {
+        items: cart.map(item => ({ product_id: item.product.id, qty: item.qty })),
+        customer_name: 'Pelanggan Walk-in',
+        payment_method: selectedPaymentMethod,
+      }
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json() as {
+        error?: string
+        data?: { sale_id: string; invoice_number: string; gateway_payment_url: string | null }
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal memproses pesanan')
+      }
+
+      const { invoice_number, gateway_payment_url } = data.data!
+
+      if (selectedPaymentMethod === 'qris' || selectedPaymentMethod === 'transfer') {
+        if (gateway_payment_url) {
+          setIsRedirecting(true)
+          window.location.href = gateway_payment_url
+          return
+        }
+        setIsProcessingOrder(false)
+        setOrderErrorMsg('⚠️ Gagal mendapatkan URL pembayaran dari Midtrans. Periksa konfigurasi.')
+        return
+      }
+
+      // Cash Flow
+      handleCheckoutSuccess(invoice_number)
+      setShowConfirmation(false)
+      setView('shop')
+      setIsProcessingOrder(false)
+
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Terjadi kesalahan sistem'
+      setOrderErrorMsg(message)
+      setIsProcessingOrder(false)
+    }
+  }
+
   const handleCheckoutSuccess = (invoiceNumber: string) => {
     const subtotal = cart.reduce((s, i) => s + i.subtotal, 0)
 
-    // Simpan data untuk struk
     const receipt: ReceiptData = {
       invoiceNumber,
       items: cart.map(item => ({
@@ -156,16 +215,13 @@ export default function POSPage() {
     }
 
     setReceiptData(receipt)
-    setCart([]) // Kosongkan keranjang
-    setIsCheckoutOpen(false)
-    setSuccessInvoice(invoiceNumber) // Tampilkan SuccessModal
+    setCart([]) 
+    setSuccessInvoice(invoiceNumber) 
   }
 
-  // ── Fungsi cetak struk — dipanggil SuccessModal secara otomatis ───
   const handlePrintReceipt = useCallback(() => {
     if (!receiptData) return
 
-    // Buka print window langsung (tidak perlu preview modal)
     const formatRupiah = (v: number) =>
       new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v)
 
@@ -242,7 +298,6 @@ export default function POSPage() {
     printWindow.document.close()
   }, [receiptData])
 
-  // ── Tutup SuccessModal → reset semua ─────────────────────────────
   const handleSuccessClose = () => {
     setSuccessInvoice(null)
     setReceiptData(null)
@@ -255,46 +310,73 @@ export default function POSPage() {
 
   return (
     <div className={styles.posLayout}>
-      <main className={styles.mainContent}>
-        <header className={styles.header}>
-          <div className={styles.brand}>
-            <Image src="/logo.jpeg" alt="IndoBangunan" width={140} height={32} style={{ objectFit: 'contain' }} />
+      
+      {isRedirecting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mb-4"></div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Mengarahkan ke Halaman Pembayaran...</h3>
+            <p className="text-gray-500 text-center max-w-sm">Anda akan segera diarahkan ke halaman QRIS / Transfer Bank.<br/><strong>Jangan tutup layar ini.</strong></p>
           </div>
-          <div className={styles.headerTitle}>
-            <h2>Pilih Produk Anda</h2>
-            <p>Ketuk pada produk untuk menambahkan ke keranjang</p>
-          </div>
-        </header>
-
-        <div className={styles.gridWrapper}>
-          <ProductGrid
-            products={products}
-            isLoading={isLoading}
-            onAddToCart={handleAddToCart}
-            cartQtyMap={cartQtyMap}
-          />
         </div>
-      </main>
+      )}
 
-      <aside className={styles.cartSidebar}>
-        <CartPanel
-          cart={cart}
-          onUpdateQty={handleUpdateQty}
-          onRemove={handleRemoveFromCart}
-          onCheckoutClick={() => setIsCheckoutOpen(true)}
-        />
-      </aside>
+      {view === 'shop' ? (
+        <>
+          <main className={styles.mainContent}>
+            <header className={styles.header}>
+              <div className={styles.brand}>
+                <Link href="/">
+                  <Image src="/logo.jpeg" alt="IndoBangunan" width={140} height={32} style={{ objectFit: 'contain' }} />
+                </Link>
+              </div>
+              <div className={styles.headerTitle}>
+                <h2>Pilih Produk Anda</h2>
+                <p>Ketuk pada produk untuk menambahkan ke keranjang</p>
+              </div>
+            </header>
 
-      {/* ── CheckoutModal (QRIS/Transfer = redirect, Cash = SuccessModal) ── */}
-      {isCheckoutOpen && (
-        <CheckoutModal
-          cart={cart}
-          onClose={() => setIsCheckoutOpen(false)}
-          onSuccess={handleCheckoutSuccess}
+            <div className={styles.gridWrapper}>
+              <ProductGrid
+                products={products}
+                isLoading={isLoading}
+                onAddToCart={handleAddToCart}
+                cartQtyMap={cartQtyMap}
+              />
+            </div>
+          </main>
+
+          <aside className={styles.cartSidebar}>
+            <CartPanel
+              cart={cart}
+              onUpdateQty={handleUpdateQty}
+              onRemove={handleRemoveFromCart}
+              onCheckoutClick={() => setView('payment')}
+            />
+          </aside>
+        </>
+      ) : (
+        <PaymentSelectionView 
+          cart={cart} 
+          onBack={() => setView('shop')}
+          onNext={(method) => {
+            setSelectedPaymentMethod(method)
+            setShowConfirmation(true)
+          }}
         />
       )}
 
-      {/* ── SuccessModal (Cash ONLY) — auto-print struk ── */}
+      {showConfirmation && selectedPaymentMethod && (
+        <OrderConfirmationModal
+          cart={cart}
+          paymentMethod={selectedPaymentMethod}
+          onClose={() => setShowConfirmation(false)}
+          onConfirm={handleConfirmOrder}
+          isProcessing={isProcessingOrder}
+          errorMsg={orderErrorMsg}
+        />
+      )}
+
       {successInvoice && (
         <SuccessModal
           invoiceNumber={successInvoice}
@@ -303,7 +385,6 @@ export default function POSPage() {
         />
       )}
 
-      {/* ── ReceiptPrinter (preview modal — dapat dipanggil manual) ── */}
       {showReceiptPreview && receiptData && (
         <ReceiptPrinter
           invoiceNumber={receiptData.invoiceNumber}

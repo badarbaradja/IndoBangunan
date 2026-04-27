@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         total, 
         status, 
         customer_name,
-        created_by,
+        cashier_id,
         users(full_name),
         payments(payment_method)
       `)
